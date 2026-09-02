@@ -645,9 +645,9 @@ function openAuthNavigation(originalWindowOpen, url, name, specs) {
 // Global guard flag to prevent multiple execution overhead
 let isPlayerIsolated = false;
 
-window.addEventListener("keydown", (event) => {
+window.addEventListener('keydown', (event) => {
   // Trigger on Alt + S (case-insensitive)
-  if (event.altKey && event.key.toLowerCase() === "s") {
+  if (event.altKey && event.key.toLowerCase() === 's') {
     event.preventDefault();
 
     // Prevent redundant execution if already initialized
@@ -655,101 +655,83 @@ window.addEventListener("keydown", (event) => {
     isPlayerIsolated = true;
 
     (function isolatePlayer() {
-      const gameContainer = document.getElementById("ddtank-container");
+      const gameContainer = document.getElementById('ddtank-container');
       if (!gameContainer) {
         isPlayerIsolated = false; // Reset guard if container is not found
         return;
       }
 
-      // Remove unrelated DOM elements from the body
-      [...document.body.children].forEach((child) => {
-        if (child !== gameContainer) child.remove();
-      });
+      // Fast removal of unrelated DOM elements
+      const children = Array.from(document.body.children);
+      for (let i = 0; i < children.length; i++) {
+        if (children[i] !== gameContainer) {
+          children[i].remove();
+        }
+      }
 
-      // Ensure the container is directly mounted to body
+      // Ensure container is mounted directly to body
       if (gameContainer.parentElement !== document.body) {
         document.body.appendChild(gameContainer);
       }
 
-      // Apply fullscreen layout styling to body
+      // Apply GPU-friendly layout styling to body
       document.body.style.cssText =
-        "margin: 0; padding: 0; background-color: #000; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden;";
+        'margin:0;padding:0;background-color:#000;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;overflow:hidden;';
 
-      const playerComponent = gameContainer.querySelector("ddtank-player");
-
-      // Helper to retrieve canvas element inside Shadow DOM or standard DOM
+      const playerComponent = gameContainer.querySelector('ddtank-player');
       const getGameCanvas = () =>
-        playerComponent &&
-        (playerComponent.shadowRoot || playerComponent).querySelector("canvas");
+        playerComponent && (playerComponent.shadowRoot || playerComponent).querySelector('canvas');
 
-      // Inject the SVG convolution matrix filter for sharpening
-      function ensureSharpenFilter() {
-        if (document.getElementById("isolate-sharpen-svg")) return;
-
-        const svgElement = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg",
-        );
-        svgElement.id = "isolate-sharpen-svg";
-        svgElement.style.cssText =
-          "position:absolute;width:0;height:0;overflow:hidden;";
-        svgElement.innerHTML =
-          '<filter id="isolate-sharpen"><feConvolveMatrix order="3" preserveAlpha="true" kernelMatrix="0 -0.25 0 -0.25 2 -0.25 0 -0.25 0" /></filter>';
-
-        document.body.appendChild(svgElement);
-      }
-
-      // Calculate aspect ratio and apply custom graphics filter
-      function applyAspectRatioAndFilter() {
+      function applyRawLayout() {
         const canvas = getGameCanvas();
-        const canvasWidth =
-          (canvas && canvas.width) || gameContainer.offsetWidth;
-        const canvasHeight =
-          (canvas && canvas.height) || gameContainer.offsetHeight;
+        const canvasWidth = (canvas && canvas.width) || gameContainer.offsetWidth;
+        const canvasHeight = (canvas && canvas.height) || gameContainer.offsetHeight;
 
         if (!canvasWidth || !canvasHeight) return false;
 
-        // Maintain strict aspect ratio based on original canvas dimensions
+        // Apply strict aspect ratio without visual modifications
         gameContainer.style.cssText =
-          "aspect-ratio: " +
+          'aspect-ratio:' +
           canvasWidth +
-          " / " +
+          '/' +
           canvasHeight +
-          "; width: 100vw; height: auto; max-height: 100vh; max-width: calc(100vh * " +
+          ';width:100vw;height:auto;max-height:100vh;max-width:calc(100vh*' +
           canvasWidth +
-          " / " +
+          '/' +
           canvasHeight +
-          "); margin: auto;";
+          ');margin:auto;';
 
         if (playerComponent) {
-          playerComponent.style.cssText =
-            "width: 100%; height: 100%; display: block;";
+          playerComponent.style.cssText = 'width:100%;height:100%;display:block;';
         }
 
         if (canvas) {
-          ensureSharpenFilter();
-          canvas.style.imageRendering = "crisp-edges";
-          canvas.style.filter = "url(#isolate-sharpen)";
+          // Standard browser rendering without post-processing filters
+          canvas.style.imageRendering = 'crisp-edges';
+          canvas.style.filter = 'none';
         }
 
         return !!canvas;
       }
 
-      // Retry mechanism in case the canvas context takes time to instantiate
-      if (!applyAspectRatioAndFilter()) {
+      // Single fast initialization check
+      if (!applyRawLayout()) {
         const retryInterval = setInterval(() => {
-          if (applyAspectRatioAndFilter()) clearInterval(retryInterval);
-        }, 200);
+          if (applyRawLayout()) clearInterval(retryInterval);
+        }, 150);
 
-        setTimeout(() => clearInterval(retryInterval), 15000);
+        setTimeout(() => clearInterval(retryInterval), 10000);
       }
 
-      // Observer to enforce clean layout against dynamic scripts re-injecting elements
+      // Observer for dynamic element cleanup
       if (!window.__isolateDomObserver) {
         window.__isolateDomObserver = new MutationObserver(() => {
-          [...document.body.children].forEach(
-            (child) => child !== gameContainer && child.remove(),
-          );
+          const currentChildren = document.body.children;
+          for (let i = currentChildren.length - 1; i >= 0; i--) {
+            if (currentChildren[i] !== gameContainer) {
+              currentChildren[i].remove();
+            }
+          }
         });
 
         window.__isolateDomObserver.observe(document.body, { childList: true });
