@@ -728,7 +728,7 @@ window.addEventListener("keydown", (event) => {
 
         if (canvas) {
           ensureSharpenFilter();
-          canvas.style.imageRendering = "auto";
+          canvas.style.imageRendering = "crisp-edges";
           canvas.style.filter = "url(#isolate-sharpen)";
         }
 
