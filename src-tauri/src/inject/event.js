@@ -645,9 +645,9 @@ function openAuthNavigation(originalWindowOpen, url, name, specs) {
 // Global guard flag to prevent multiple execution overhead
 let isPlayerIsolated = false;
 
-window.addEventListener('keydown', (event) => {
+window.addEventListener("keydown", (event) => {
   // Trigger on Alt + S (case-insensitive)
-  if (event.altKey && event.key.toLowerCase() === 's') {
+  if (event.altKey && event.key.toLowerCase() === "s") {
     event.preventDefault();
 
     // Prevent redundant execution if already initialized
@@ -655,7 +655,7 @@ window.addEventListener('keydown', (event) => {
     isPlayerIsolated = true;
 
     (function isolatePlayer() {
-      const gameContainer = document.getElementById('ddtank-container');
+      const gameContainer = document.getElementById("ddtank-container");
       if (!gameContainer) {
         isPlayerIsolated = false; // Reset guard if container is not found
         return;
@@ -676,39 +676,43 @@ window.addEventListener('keydown', (event) => {
 
       // Apply GPU-friendly layout styling to body
       document.body.style.cssText =
-        'margin:0;padding:0;background-color:#000;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;overflow:hidden;';
+        "margin:0;padding:0;background-color:#000;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;overflow:hidden;";
 
-      const playerComponent = gameContainer.querySelector('ddtank-player');
+      const playerComponent = gameContainer.querySelector("ddtank-player");
       const getGameCanvas = () =>
-        playerComponent && (playerComponent.shadowRoot || playerComponent).querySelector('canvas');
+        playerComponent &&
+        (playerComponent.shadowRoot || playerComponent).querySelector("canvas");
 
       function applyRawLayout() {
         const canvas = getGameCanvas();
-        const canvasWidth = (canvas && canvas.width) || gameContainer.offsetWidth;
-        const canvasHeight = (canvas && canvas.height) || gameContainer.offsetHeight;
+        const canvasWidth =
+          (canvas && canvas.width) || gameContainer.offsetWidth;
+        const canvasHeight =
+          (canvas && canvas.height) || gameContainer.offsetHeight;
 
         if (!canvasWidth || !canvasHeight) return false;
 
         // Apply strict aspect ratio without visual modifications
         gameContainer.style.cssText =
-          'aspect-ratio:' +
+          "aspect-ratio:" +
           canvasWidth +
-          '/' +
+          "/" +
           canvasHeight +
-          ';width:100vw;height:auto;max-height:100vh;max-width:calc(100vh*' +
+          ";width:100vw;height:auto;max-height:100vh;max-width:calc(100vh*" +
           canvasWidth +
-          '/' +
+          "/" +
           canvasHeight +
-          ');margin:auto;';
+          ");margin:auto;";
 
         if (playerComponent) {
-          playerComponent.style.cssText = 'width:100%;height:100%;display:block;';
+          playerComponent.style.cssText =
+            "width:100%;height:100%;display:block;";
         }
 
         if (canvas) {
           // Standard browser rendering without post-processing filters
-          canvas.style.imageRendering = 'crisp-edges';
-          canvas.style.filter = 'none';
+          canvas.style.imageRendering = "crisp-edges";
+          canvas.style.filter = "none";
         }
 
         return !!canvas;
