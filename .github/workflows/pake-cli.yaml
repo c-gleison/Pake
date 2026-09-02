@@ -204,7 +204,8 @@ jobs:
           if ("${{ inputs.new_window }}" -eq "true") {
             $args += "--new-window"
           }
-
+          
+          $args += "--debug"
           Write-Host "Running: node dist/cli.js $($args -join ' ')"
           node dist/cli.js $args
 
