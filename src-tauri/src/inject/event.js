@@ -642,6 +642,61 @@ function openAuthNavigation(originalWindowOpen, url, name, specs) {
   return authWindow;
 }
 
+window.addEventListener('DOMContentLoaded', () => {
+
+  (function isolarPlayer() {
+    const gameContainer = document.getElementById('ddtank-container');
+    if (!gameContainer) return;
+
+    [...document.body.children].forEach((child) => {
+      if (child !== gameContainer) child.remove();
+    });
+    if (gameContainer.parentElement !== document.body) {
+      document.body.appendChild(gameContainer);
+    }
+
+    document.body.style.cssText = 'margin: 0; padding: 0; background-color: #000; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden;';
+
+    const player = gameContainer.querySelector('ddtank-player');
+    const getCanvas = () => player && (player.shadowRoot || player).querySelector('canvas');
+
+    function garantirFiltroDeNitidez() {
+      if (document.getElementById('isolar-sharpen-svg')) return;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = 'isolar-sharpen-svg';
+      svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+      svg.innerHTML = '<filter id="isolar-sharpen"><feConvolveMatrix order="3" preserveAlpha="true" kernelMatrix="0 -0.25 0 -0.25 2 -0.25 0 -0.25 0" /></filter>';
+      document.body.appendChild(svg);
+    }
+
+    function aplicarProporcao() {
+      const canvas = getCanvas();
+      const w = (canvas && canvas.width) || gameContainer.offsetWidth;
+      const h = (canvas && canvas.height) || gameContainer.offsetHeight;
+      if (!w || !h) return false;
+
+      gameContainer.style.cssText = 'aspect-ratio: ' + w + ' / ' + h + '; width: 100vw; height: auto; max-height: 100vh; max-width: calc(100vh * ' + w + ' / ' + h + '); margin: auto;';
+      if (player) player.style.cssText = 'width: 100%; height: 100%; display: block;';
+
+      if (canvas) {
+        garantirFiltroDeNitidez();
+        canvas.style.imageRendering = 'auto';
+        canvas.style.filter = 'url(#isolar-sharpen)';
+      }
+      return !!canvas;
+    }
+
+    if (!aplicarProporcao()) {
+      const wait = setInterval(() => aplicarProporcao() && clearInterval(wait), 200);
+      setTimeout(() => clearInterval(wait), 15000);
+    }
+
+    new MutationObserver(() => {
+      [...document.body.children].forEach((child) => child !== gameContainer && child.remove());
+    }).observe(document.body, { childList: true });
+  })();
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const tauri = window.__TAURI__;
   const appWindow = tauri.window.getCurrentWindow();
