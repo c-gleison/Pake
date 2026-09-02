@@ -642,83 +642,110 @@ function openAuthNavigation(originalWindowOpen, url, name, specs) {
   return authWindow;
 }
 
-window.addEventListener("keydown", (event) => {
-  // Verifica o acionamento de Alt + S (insensível a maiúsculas/minúsculas)
-  if (event.altKey && event.key.toLowerCase() === "s") {
+// Global guard flag to prevent multiple execution overhead
+let isPlayerIsolated = false;
+
+window.addEventListener('keydown', (event) => {
+  // Trigger on Alt + S (case-insensitive)
+  if (event.altKey && event.key.toLowerCase() === 's') {
     event.preventDefault();
 
-    (function isolarPlayer() {
-      const gameContainer = document.getElementById("ddtank-container");
-      if (!gameContainer) return;
+    // Prevent redundant execution if already initialized
+    if (isPlayerIsolated) return;
+    isPlayerIsolated = true;
 
+    (function isolatePlayer() {
+      const gameContainer = document.getElementById('ddtank-container');
+      if (!gameContainer) {
+        isPlayerIsolated = false; // Reset guard if container is not found
+        return;
+      }
+
+      // Remove unrelated DOM elements from the body
       [...document.body.children].forEach((child) => {
         if (child !== gameContainer) child.remove();
       });
+
+      // Ensure the container is directly mounted to body
       if (gameContainer.parentElement !== document.body) {
         document.body.appendChild(gameContainer);
       }
 
+      // Apply fullscreen layout styling to body
       document.body.style.cssText =
-        "margin: 0; padding: 0; background-color: #000; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden;";
+        'margin: 0; padding: 0; background-color: #000; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden;';
 
-      const player = gameContainer.querySelector("ddtank-player");
-      const getCanvas = () =>
-        player && (player.shadowRoot || player).querySelector("canvas");
+      const playerComponent = gameContainer.querySelector('ddtank-player');
+      
+      // Helper to retrieve canvas element inside Shadow DOM or standard DOM
+      const getGameCanvas = () =>
+        playerComponent && (playerComponent.shadowRoot || playerComponent).querySelector('canvas');
 
-      function garantirFiltroDeNitidez() {
-        if (document.getElementById("isolar-sharpen-svg")) return;
-        const svg = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg",
-        );
-        svg.id = "isolar-sharpen-svg";
-        svg.style.cssText =
-          "position:absolute;width:0;height:0;overflow:hidden;";
-        svg.innerHTML =
-          '<filter id="isolar-sharpen"><feConvolveMatrix order="3" preserveAlpha="true" kernelMatrix="0 -0.25 0 -0.25 2 -0.25 0 -0.25 0" /></filter>';
-        document.body.appendChild(svg);
+      // Inject the SVG convolution matrix filter for sharpening
+      function ensureSharpenFilter() {
+        if (document.getElementById('isolate-sharpen-svg')) return;
+
+        const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgElement.id = 'isolate-sharpen-svg';
+        svgElement.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+        svgElement.innerHTML =
+          '<filter id="isolate-sharpen"><feConvolveMatrix order="3" preserveAlpha="true" kernelMatrix="0 -0.25 0 -0.25 2 -0.25 0 -0.25 0" /></filter>';
+
+        document.body.appendChild(svgElement);
       }
 
-      function aplicarProporcao() {
-        const canvas = getCanvas();
-        const w = (canvas && canvas.width) || gameContainer.offsetWidth;
-        const h = (canvas && canvas.height) || gameContainer.offsetHeight;
-        if (!w || !h) return false;
+      // Calculate aspect ratio and apply custom graphics filter
+      function applyAspectRatioAndFilter() {
+        const canvas = getGameCanvas();
+        const canvasWidth = (canvas && canvas.width) || gameContainer.offsetWidth;
+        const canvasHeight = (canvas && canvas.height) || gameContainer.offsetHeight;
 
+        if (!canvasWidth || !canvasHeight) return false;
+
+        // Maintain strict aspect ratio based on original canvas dimensions
         gameContainer.style.cssText =
-          "aspect-ratio: " +
-          w +
-          " / " +
-          h +
-          "; width: 100vw; height: auto; max-height: 100vh; max-width: calc(100vh * " +
-          w +
-          " / " +
-          h +
-          "); margin: auto;";
-        if (player)
-          player.style.cssText = "width: 100%; height: 100%; display: block;";
+          'aspect-ratio: ' +
+          canvasWidth +
+          ' / ' +
+          canvasHeight +
+          '; width: 100vw; height: auto; max-height: 100vh; max-width: calc(100vh * ' +
+          canvasWidth +
+          ' / ' +
+          canvasHeight +
+          '); margin: auto;';
+
+        if (playerComponent) {
+          playerComponent.style.cssText = 'width: 100%; height: 100%; display: block;';
+        }
 
         if (canvas) {
-          garantirFiltroDeNitidez();
-          canvas.style.imageRendering = "auto";
-          canvas.style.filter = "url(#isolar-sharpen)";
+          ensureSharpenFilter();
+          canvas.style.imageRendering = 'auto';
+          canvas.style.filter = 'url(#isolate-sharpen)';
         }
+
         return !!canvas;
       }
 
-      if (!aplicarProporcao()) {
-        const wait = setInterval(
-          () => aplicarProporcao() && clearInterval(wait),
-          200,
-        );
-        setTimeout(() => clearInterval(wait), 15000);
+      // Retry mechanism in case the canvas context takes time to instantiate
+      if (!applyAspectRatioAndFilter()) {
+        const retryInterval = setInterval(() => {
+          if (applyAspectRatioAndFilter()) clearInterval(retryInterval);
+        }, 200);
+
+        setTimeout(() => clearInterval(retryInterval), 15000);
       }
 
-      new MutationObserver(() => {
-        [...document.body.children].forEach(
-          (child) => child !== gameContainer && child.remove(),
-        );
-      }).observe(document.body, { childList: true });
+      // Observer to enforce clean layout against dynamic scripts re-injecting elements
+      if (!window.__isolateDomObserver) {
+        window.__isolateDomObserver = new MutationObserver(() => {
+          [...document.body.children].forEach(
+            (child) => child !== gameContainer && child.remove()
+          );
+        });
+
+        window.__isolateDomObserver.observe(document.body, { childList: true });
+      }
     })();
   }
 });
