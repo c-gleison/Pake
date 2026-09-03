@@ -751,17 +751,21 @@ fn build_window(
     window_builder = window_builder.on_web_resource_request(move |request, response| {
         let uri = request.uri().to_string();
 
-        // Intercepts Ruffle's script
-        if uri.contains("ruffle.js") {
-            let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
-            let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
-            let path = if prod_path.exists() {
-                prod_path
-            } else {
-                dev_path
-            };
+        // Define a pasta base (src-tauri/assets/ruffle em Dev ou ./ruffle ao lado do .exe em Prod)
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
 
-            if let Ok(content) = std::fs::read(path) {
+        let dev_dir = std::path::PathBuf::from("src-tauri/assets/ruffle");
+        let external_dir = exe_dir.join("ruffle");
+        let base_dir = if dev_dir.exists() { dev_dir } else { external_dir };
+
+        // Intercepta o script do Ruffle
+        if uri.contains("ruffle.js") {
+            let js_path = base_dir.join("ruffle.js");
+
+            if let Ok(content) = std::fs::read(js_path) {
                 if let Ok(custom_response) = tauri::http::Response::builder()
                     .status(200)
                     .header("Content-Type", "application/javascript")
@@ -772,27 +776,37 @@ fn build_window(
                 }
             }
         }
-        // Intercepts Ruffle's WebAssembly binaries (.wasm)
-        else if uri.ends_with(".wasm") || uri.contains("f9d8f9d57ee5a2ad2d60.wasm") {
-            // Extrai o nome do arquivo da URL (f9d8f9d57ee5a2ad2d60.wasm)
-            let file_name = uri.split('/').last().unwrap_or("f9d8f9d57ee5a2ad2d60.wasm");
-            let clean_name = file_name.split('?').next().unwrap_or(file_name);
+        // Intercepta os binários WebAssembly (.wasm)
+        else if uri.contains(".wasm") {
+            let raw_filename = uri.split('/').last().unwrap_or("ruffle.wasm");
+            let requested_filename = raw_filename.split('?').next().unwrap_or(raw_filename);
+            let exact_path = base_dir.join(requested_filename);
 
-            let prod_path = resource_dir.join(format!("assets/ruffle/{}", clean_name));
-            let dev_path =
-                std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_name));
-
-            let path = if prod_path.exists() {
-                prod_path
+            // Se o arquivo exato não existir, pega o primeiro .wasm da pasta
+            let target_path = if exact_path.exists() {
+                exact_path
             } else {
-                dev_path
+                std::fs::read_dir(&base_dir)
+                    .ok()
+                    .and_then(|entries| {
+                        entries.filter_map(|e| e.ok()).find_map(|entry| {
+                            let path = entry.path();
+                            if path.extension().map_or(false, |ext| ext == "wasm") {
+                                Some(path)
+                            } else {
+                                None
+                            }
+                        })
+                    })
+                    .unwrap_or(exact_path)
             };
 
-            if let Ok(content) = std::fs::read(&path) {
+            if let Ok(content) = std::fs::read(&target_path) {
                 if let Ok(custom_response) = tauri::http::Response::builder()
                     .status(200)
                     .header("Content-Type", "application/wasm")
                     .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Headers", "*")
                     .body(std::borrow::Cow::Owned(content))
                 {
                     *response = custom_response;
