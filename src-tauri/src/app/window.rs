@@ -728,7 +728,7 @@ fn build_window(
     window_builder = window_builder.on_web_resource_request(move |request, response| {
         let uri = request.uri().to_string();
 
-        // Intercepts the Ruffle script call
+        // Intercepts Ruffle's script
         if uri.contains("ruffle.js") {
             let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
             let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
@@ -739,10 +739,14 @@ fn build_window(
             };
 
             if let Ok(content) = std::fs::read(path) {
-                response.set_status(200);
-                response.set_header("Content-Type", "application/javascript");
-                response.set_header("Access-Control-Allow-Origin", "*");
-                response.set_body(content);
+                if let Ok(custom_response) = http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", "application/javascript")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(content)
+                {
+                    *response = custom_response;
+                }
             }
         }
         // Intercepts Ruffle's WebAssembly binaries (.wasm)
@@ -758,10 +762,14 @@ fn build_window(
                 };
 
                 if let Ok(content) = std::fs::read(path) {
-                    response.set_status(200);
-                    response.set_header("Content-Type", "application/wasm");
-                    response.set_header("Access-Control-Allow-Origin", "*");
-                    response.set_body(content);
+                    if let Ok(custom_response) = http::Response::builder()
+                        .status(200)
+                        .header("Content-Type", "application/wasm")
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(content)
+                    {
+                        *response = custom_response;
+                    }
                 }
             }
         }
