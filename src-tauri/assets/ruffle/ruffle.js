@@ -1,7 +1,7 @@
 (() => {
   console.log(">>> RUFFLE LOCAL CARREGADO COM SUCESSO <<<");
-  
-  "use strict";
+
+  ("use strict");
   var e = {
     48(e, n) {
       Object.defineProperty(n, "__esModule", { value: !0 });
