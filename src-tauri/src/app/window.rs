@@ -442,7 +442,13 @@ fn build_window(
             window.RufflePlayer.config = {
                 "autoplay": "on",
                 "unmuteOverlay": "hidden",
-                "graphicsBackends": ["webgl"]
+                "preferredRenderer": "webgl",
+                "quality": "high",
+                "wmode": "direct",
+                "smooth": true,
+                "letterbox": "off",
+                "contextMenu": "rightClickOnly",
+                "warnOnUnsupportedContent": false
             };
         "#;
         let combined_script = format!("{}\n{}", config_script, ruffle_src);
@@ -515,21 +521,6 @@ fn build_window(
         });
     }
 
-    // Ruffle configuration for WebGL and performance
-    let ruffle_config = r#"
-        window.RufflePlayer = window.RufflePlayer || {};
-        window.RufflePlayer.config = {
-            preferredRenderer: "wgpu-webgl",
-            quality: "high",
-            wmode: "direct",
-            smooth: true,
-            letterbox: "off",
-            contextMenu: "rightClickOnly"
-        };
-    "#;
-
-    window_builder = window_builder.initialization_script(ruffle_config);
-
     // Add initialization scripts. Order matters: pakeConfig must land before
     // any script that reads it (e.g. fullscreen polyfill checks for an opt-out
     // flag), and toast must register `window.pakeToast` before Rust code
@@ -554,8 +545,13 @@ fn build_window(
         .initialization_script(include_str!("../inject/custom.js"));
 
     #[cfg(target_os = "windows")]
-    let mut windows_browser_args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-blink-features=AutomationControlled");
-
+    let mut windows_browser_args = String::from(
+        "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,TrackingPrevention \
+         --disable-blink-features=AutomationControlled \
+         --allow-file-access-from-files \
+         --enable-local-file-accesses"
+    );
+    
     #[cfg(target_os = "linux")]
     let mut linux_browser_args = String::from("--disable-blink-features=AutomationControlled");
 
@@ -810,6 +806,7 @@ fn build_window(
                     .status(200)
                     .header("Content-Type", "application/wasm")
                     .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS") // <-- ADICIONAR ESTA LINHA
                     .header("Access-Control-Allow-Headers", "*")
                     .body(std::borrow::Cow::Owned(content))
                 {
