@@ -448,7 +448,7 @@ fn build_window(
         let combined_script = format!("{}\n{}", config_script, ruffle_src);
         window_builder = window_builder.initialization_script(&combined_script);
     }
-        
+
     #[cfg(target_os = "windows")]
     {
         let scale_factor = app
