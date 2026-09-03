@@ -426,7 +426,7 @@ fn build_window(
         .user_agent(user_agent)
         .resizable(window_config.resizable)
         .maximized(window_config.maximize);
-        
+
     let resource_dir = app.path().resource_dir().unwrap_or_default();
     let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
     let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
@@ -519,10 +519,10 @@ fn build_window(
     let ruffle_config = r#"
         window.RufflePlayer = window.RufflePlayer || {};
         window.RufflePlayer.config = {
-            preferredRenderer: "webgl",
-            quality: "medium",
+            preferredRenderer: "wgpu-webgl",
+            quality: "high",
             wmode: "direct",
-            smooth: false,
+            smooth: true,
             letterbox: "off"
         };
     "#;
@@ -772,11 +772,14 @@ fn build_window(
             }
         }
         // Intercepts Ruffle's WebAssembly binaries (.wasm)
-        else if uri.contains(".wasm") && uri.contains("ruffle") {
+        else if uri.contains(".wasm") {
             if let Some(file_name) = uri.split('/').last() {
-                let prod_path = resource_dir.join(format!("assets/ruffle/{}", file_name));
-                let dev_path =
-                    std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", file_name));
+                // Remove parâmetros de busca (query strings) se existirem
+                let clean_file_name = file_name.split('?').next().unwrap_or(file_name);
+                
+                let prod_path = resource_dir.join(format!("assets/ruffle/{}", clean_file_name));
+                let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_file_name));
+                
                 let path = if prod_path.exists() {
                     prod_path
                 } else {

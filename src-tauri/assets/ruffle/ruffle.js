@@ -1,4 +1,6 @@
 (() => {
+  console.log(">>> RUFFLE LOCAL CARREGADO COM SUCESSO <<<");
+  
   "use strict";
   var e = {
     48(e, n) {
