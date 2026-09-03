@@ -779,9 +779,14 @@ fn build_window(
             let clean_name = file_name.split('?').next().unwrap_or(file_name);
 
             let prod_path = resource_dir.join(format!("assets/ruffle/{}", clean_name));
-            let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_name));
+            let dev_path =
+                std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_name));
 
-            let path = if prod_path.exists() { prod_path } else { dev_path };
+            let path = if prod_path.exists() {
+                prod_path
+            } else {
+                dev_path
+            };
 
             if let Ok(content) = std::fs::read(&path) {
                 if let Ok(custom_response) = tauri::http::Response::builder()
