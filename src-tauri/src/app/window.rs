@@ -523,7 +523,8 @@ fn build_window(
             quality: "high",
             wmode: "direct",
             smooth: true,
-            letterbox: "off"
+            letterbox: "off",
+            contextMenu: "rightClickOnly"
         };
     "#;
 
@@ -772,29 +773,24 @@ fn build_window(
             }
         }
         // Intercepts Ruffle's WebAssembly binaries (.wasm)
-        else if uri.contains(".wasm") {
-            if let Some(file_name) = uri.split('/').last() {
-                // Remove parâmetros de busca (query strings) se existirem
-                let clean_file_name = file_name.split('?').next().unwrap_or(file_name);
-                
-                let prod_path = resource_dir.join(format!("assets/ruffle/{}", clean_file_name));
-                let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_file_name));
-                
-                let path = if prod_path.exists() {
-                    prod_path
-                } else {
-                    dev_path
-                };
+        else if uri.ends_with(".wasm") || uri.contains("f9d8f9d57ee5a2ad2d60.wasm") {
+            // Extrai o nome do arquivo da URL (f9d8f9d57ee5a2ad2d60.wasm)
+            let file_name = uri.split('/').last().unwrap_or("f9d8f9d57ee5a2ad2d60.wasm");
+            let clean_name = file_name.split('?').next().unwrap_or(file_name);
 
-                if let Ok(content) = std::fs::read(path) {
-                    if let Ok(custom_response) = tauri::http::Response::builder()
-                        .status(200)
-                        .header("Content-Type", "application/wasm")
-                        .header("Access-Control-Allow-Origin", "*")
-                        .body(std::borrow::Cow::Owned(content))
-                    {
-                        *response = custom_response;
-                    }
+            let prod_path = resource_dir.join(format!("assets/ruffle/{}", clean_name));
+            let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_name));
+
+            let path = if prod_path.exists() { prod_path } else { dev_path };
+
+            if let Ok(content) = std::fs::read(&path) {
+                if let Ok(custom_response) = tauri::http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", "application/wasm")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(std::borrow::Cow::Owned(content))
+                {
+                    *response = custom_response;
                 }
             }
         }
