@@ -549,9 +549,9 @@ fn build_window(
         "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,TrackingPrevention \
          --disable-blink-features=AutomationControlled \
          --allow-file-access-from-files \
-         --enable-local-file-accesses"
+         --enable-local-file-accesses",
     );
-    
+
     #[cfg(target_os = "linux")]
     let mut linux_browser_args = String::from("--disable-blink-features=AutomationControlled");
 
