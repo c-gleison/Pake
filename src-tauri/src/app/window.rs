@@ -742,10 +742,16 @@ fn build_window(
     window_builder = window_builder.on_navigation(|_| true);
 
     // Gets the compiled resource folder in the app
-    let resource_dir = app.path().resource_dir().unwrap_or_default();
-
     window_builder = window_builder.on_web_resource_request(move |request, response| {
         let uri = request.uri().to_string();
+
+        // Pasta ao lado do .exe onde o Ruffle é colocado manualmente
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+
+        let base_dir = exe_dir.join("ruffle");
 
         // Só olha URIs que parecem pedir um asset do Ruffle
         if !(uri.contains("ruffle") || uri.contains(".wasm") || uri.contains("core.ruffle")) {
