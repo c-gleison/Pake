@@ -18,8 +18,6 @@
     "frontendDist": "../dist"
   },
   "bundle": {
-    "resources": [
-      "assets/ruffle/*"
-    ]
+    "resources": ["assets/ruffle/*"]
   }
 }

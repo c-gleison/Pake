@@ -732,7 +732,11 @@ fn build_window(
         if uri.contains("ruffle.js") {
             let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
             let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
-            let path = if prod_path.exists() { prod_path } else { dev_path };
+            let path = if prod_path.exists() {
+                prod_path
+            } else {
+                dev_path
+            };
 
             if let Ok(content) = std::fs::read(path) {
                 response.set_status(200);
@@ -740,13 +744,18 @@ fn build_window(
                 response.set_header("Access-Control-Allow-Origin", "*");
                 response.set_body(content);
             }
-        } 
+        }
         // Intercepts Ruffle's WebAssembly binaries (.wasm)
         else if uri.contains(".wasm") && uri.contains("ruffle") {
             if let Some(file_name) = uri.split('/').last() {
                 let prod_path = resource_dir.join(format!("assets/ruffle/{}", file_name));
-                let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", file_name));
-                let path = if prod_path.exists() { prod_path } else { dev_path };
+                let dev_path =
+                    std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", file_name));
+                let path = if prod_path.exists() {
+                    prod_path
+                } else {
+                    dev_path
+                };
 
                 if let Ok(content) = std::fs::read(path) {
                     response.set_status(200);
