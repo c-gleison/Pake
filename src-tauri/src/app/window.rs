@@ -759,7 +759,11 @@ fn build_window(
 
         let dev_dir = std::path::PathBuf::from("src-tauri/assets/ruffle");
         let external_dir = exe_dir.join("ruffle");
-        let base_dir = if dev_dir.exists() { dev_dir } else { external_dir };
+        let base_dir = if dev_dir.exists() {
+            dev_dir
+        } else {
+            external_dir
+        };
 
         // Intercepta o script do Ruffle
         if uri.contains("ruffle.js") {
