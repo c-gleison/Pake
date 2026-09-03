@@ -776,10 +776,13 @@ fn build_window(
             if let Some(file_name) = uri.split('/').last() {
                 // Remove parâmetros de busca (query strings) se existirem
                 let clean_file_name = file_name.split('?').next().unwrap_or(file_name);
-                
+
                 let prod_path = resource_dir.join(format!("assets/ruffle/{}", clean_file_name));
-                let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", clean_file_name));
-                
+                let dev_path = std::path::PathBuf::from(format!(
+                    "src-tauri/assets/ruffle/{}",
+                    clean_file_name
+                ));
+
                 let path = if prod_path.exists() {
                     prod_path
                 } else {
