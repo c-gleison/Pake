@@ -493,6 +493,20 @@ fn build_window(
         });
     }
 
+    // Ruffle configuration for WebGL and performance
+    let ruffle_config = r#"
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.RufflePlayer.config = {
+            preferredRenderer: "webgl",
+            quality: "medium",
+            wmode: "direct",
+            smooth: false,
+            letterbox: "off"
+        };
+    "#;
+
+    window_builder = window_builder.initialization_script(ruffle_config);
+
     // Add initialization scripts. Order matters: pakeConfig must land before
     // any script that reads it (e.g. fullscreen polyfill checks for an opt-out
     // flag), and toast must register `window.pakeToast` before Rust code
@@ -707,6 +721,42 @@ fn build_window(
     }
 
     window_builder = window_builder.on_navigation(|_| true);
+
+    // Gets the compiled resource folder in the app
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+
+    window_builder = window_builder.on_web_resource_request(move |request, response| {
+        let uri = request.uri().to_string();
+
+        // Intercepts the Ruffle script call
+        if uri.contains("ruffle.js") {
+            let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
+            let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
+            let path = if prod_path.exists() { prod_path } else { dev_path };
+
+            if let Ok(content) = std::fs::read(path) {
+                response.set_status(200);
+                response.set_header("Content-Type", "application/javascript");
+                response.set_header("Access-Control-Allow-Origin", "*");
+                response.set_body(content);
+            }
+        } 
+        // Intercepts Ruffle's WebAssembly binaries (.wasm)
+        else if uri.contains(".wasm") && uri.contains("ruffle") {
+            if let Some(file_name) = uri.split('/').last() {
+                let prod_path = resource_dir.join(format!("assets/ruffle/{}", file_name));
+                let dev_path = std::path::PathBuf::from(format!("src-tauri/assets/ruffle/{}", file_name));
+                let path = if prod_path.exists() { prod_path } else { dev_path };
+
+                if let Ok(content) = std::fs::read(path) {
+                    response.set_status(200);
+                    response.set_header("Content-Type", "application/wasm");
+                    response.set_header("Access-Control-Allow-Origin", "*");
+                    response.set_body(content);
+                }
+            }
+        }
+    });
 
     let window = window_builder.build()?;
 

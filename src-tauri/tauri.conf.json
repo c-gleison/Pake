@@ -16,5 +16,10 @@
   },
   "build": {
     "frontendDist": "../dist"
+  },
+  "bundle": {
+    "resources": [
+      "assets/ruffle/*"
+    ]
   }
 }
