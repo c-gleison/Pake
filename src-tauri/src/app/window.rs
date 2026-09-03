@@ -739,7 +739,7 @@ fn build_window(
             };
 
             if let Ok(content) = std::fs::read(path) {
-                if let Ok(custom_response) = http::Response::builder()
+                if let Ok(custom_response) = tauri::http::Response::builder()
                     .status(200)
                     .header("Content-Type", "application/javascript")
                     .header("Access-Control-Allow-Origin", "*")
@@ -762,7 +762,7 @@ fn build_window(
                 };
 
                 if let Ok(content) = std::fs::read(path) {
-                    if let Ok(custom_response) = http::Response::builder()
+                    if let Ok(custom_response) = tauri::http::Response::builder()
                         .status(200)
                         .header("Content-Type", "application/wasm")
                         .header("Access-Control-Allow-Origin", "*")
