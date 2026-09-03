@@ -711,8 +711,9 @@ window.addEventListener("keydown", (event) => {
 
         if (canvas) {
           // Standard browser rendering without post-processing filters
-          canvas.style.imageRendering = "crisp-edges";
+          canvas.style.imageRendering = "auto";
           canvas.style.filter = "none";
+          canvas.style.cursor = "none";
         }
 
         return !!canvas;
