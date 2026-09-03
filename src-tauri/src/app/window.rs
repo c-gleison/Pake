@@ -426,7 +426,29 @@ fn build_window(
         .user_agent(user_agent)
         .resizable(window_config.resizable)
         .maximized(window_config.maximize);
+        
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+    let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
+    let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
+    let ruffle_path = if prod_path.exists() {
+        prod_path
+    } else {
+        dev_path
+    };
 
+    if let Ok(ruffle_src) = std::fs::read_to_string(ruffle_path) {
+        let config_script = r#"
+            window.RufflePlayer = window.RufflePlayer || {};
+            window.RufflePlayer.config = {
+                "autoplay": "on",
+                "unmuteOverlay": "hidden",
+                "graphicsBackends": ["webgl"]
+            };
+        "#;
+        let combined_script = format!("{}\n{}", config_script, ruffle_src);
+        window_builder = window_builder.initialization_script(&combined_script);
+    }
+        
     #[cfg(target_os = "windows")]
     {
         let scale_factor = app
