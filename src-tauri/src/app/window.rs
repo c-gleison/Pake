@@ -743,7 +743,7 @@ fn build_window(
                     .status(200)
                     .header("Content-Type", "application/javascript")
                     .header("Access-Control-Allow-Origin", "*")
-                    .body(content)
+                    .body(std::borrow::Cow::Owned(content))
                 {
                     *response = custom_response;
                 }
@@ -766,7 +766,7 @@ fn build_window(
                         .status(200)
                         .header("Content-Type", "application/wasm")
                         .header("Access-Control-Allow-Origin", "*")
-                        .body(content)
+                        .body(std::borrow::Cow::Owned(content))
                     {
                         *response = custom_response;
                     }
