@@ -32,6 +32,17 @@ use tauri::Theme;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
 
+fn ruffle_debug_log(msg: &str) {
+    use std::io::Write;
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("C:\\ruffle_debug.log")
+    {
+        let _ = writeln!(file, "{msg}");
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn prepare_macos_new_window_configuration(features: &NewWindowFeatures) -> tauri::Result<()> {
     let mtm = MainThreadMarker::new().ok_or_else(|| {
