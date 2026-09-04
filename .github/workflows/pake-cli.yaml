@@ -67,6 +67,11 @@ on:
         description: "Package formats (comma-separated: deb,appimage,rpm,zst)"
         required: false
         default: "deb"
+      wasm:
+        description: "Enable WebAssembly (SharedArrayBuffer)"
+        required: false
+        type: boolean
+        default: false       
 
 jobs:
   build:
@@ -203,6 +208,10 @@ jobs:
 
           if ("${{ inputs.new_window }}" -eq "true") {
             $args += "--new-window"
+          }
+
+          if ("${{ inputs.wasm }}" -eq "true") {
+            $args += "--wasm"
           }
           
           $args += "--debug"
