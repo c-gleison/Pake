@@ -748,14 +748,6 @@ fn build_window(
     window_builder = window_builder.on_web_resource_request(move |request, response| {
         let uri = request.uri().to_string();
 
-        let log = |msg: String| {
-            if let Some(win) = app_handle.get_webview_window(&window_label) {
-                // troque "main" pelo label real da sua window, se for diferente
-                let _ = win.eval(&format!("console.log({:?})", msg));
-            }
-        };
-
-        // Pasta ao lado do .exe onde o Ruffle é colocado manualmente
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
@@ -773,9 +765,11 @@ fn build_window(
             return;
         }
 
+        ruffle_debug_log(&format!("[Ruffle][DEBUG] pedido: {requested_filename} (uri completa: {uri})"));
+
         let candidate = base_dir.join(requested_filename);
         if !candidate.exists() {
-            log(format!("[Ruffle][DEBUG] não encontrado: {requested_filename} (uri: {uri})"));
+            ruffle_debug_log(&format!("[Ruffle][DEBUG] NÃO encontrado: {requested_filename}"));
             return;
         }
 
@@ -797,7 +791,7 @@ fn build_window(
                 .body(std::borrow::Cow::Owned(content))
             {
                 *response = custom_response;
-                log(format!("[Ruffle][DEBUG] servido localmente: {requested_filename}"));
+                ruffle_debug_log(&format!("[Ruffle][DEBUG] servido localmente: {requested_filename}"));
             }
         }
     });
