@@ -769,7 +769,13 @@ fn build_window(
 
         let candidate = base_dir.join(requested_filename);
         if !candidate.exists() {
+<<<<<<< HEAD
             ruffle_debug_log(&format!("[Ruffle][DEBUG] NÃO encontrado: {requested_filename}"));
+=======
+            log(format!(
+                "[Ruffle][DEBUG] não encontrado: {requested_filename} (uri: {uri})"
+            ));
+>>>>>>> 5a9faf1c28f23539f51e8d1c1ebe3ff6f6f610bf
             return;
         }
 
@@ -791,7 +797,13 @@ fn build_window(
                 .body(std::borrow::Cow::Owned(content))
             {
                 *response = custom_response;
+<<<<<<< HEAD
                 ruffle_debug_log(&format!("[Ruffle][DEBUG] servido localmente: {requested_filename}"));
+=======
+                log(format!(
+                    "[Ruffle][DEBUG] servido localmente: {requested_filename}"
+                ));
+>>>>>>> 5a9faf1c28f23539f51e8d1c1ebe3ff6f6f610bf
             }
         }
     });
