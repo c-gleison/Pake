@@ -741,9 +741,19 @@ fn build_window(
 
     window_builder = window_builder.on_navigation(|_| true);
 
-    // Gets the compiled resource folder in the app
+    /////////////////////////////////////
+    let app_handle = app.clone();
+    let window_label = label.to_string();
+
     window_builder = window_builder.on_web_resource_request(move |request, response| {
         let uri = request.uri().to_string();
+
+        let log = |msg: String| {
+            if let Some(win) = app_handle.get_webview_window(&window_label) {
+                // troque "main" pelo label real da sua window, se for diferente
+                let _ = win.eval(&format!("console.log({:?})", msg));
+            }
+        };
 
         // Pasta ao lado do .exe onde o Ruffle é colocado manualmente
         let exe_dir = std::env::current_exe()
@@ -753,7 +763,6 @@ fn build_window(
 
         let base_dir = exe_dir.join("ruffle");
 
-        // Só olha URIs que parecem pedir um asset do Ruffle
         if !(uri.contains("ruffle") || uri.contains(".wasm") || uri.contains("core.ruffle")) {
             return;
         }
@@ -766,7 +775,7 @@ fn build_window(
 
         let candidate = base_dir.join(requested_filename);
         if !candidate.exists() {
-            eprintln!("[Ruffle][DEBUG] arquivo não encontrado localmente: {requested_filename} (uri: {uri})");
+            log(format!("[Ruffle][DEBUG] não encontrado: {requested_filename} (uri: {uri})"));
             return;
         }
 
@@ -788,7 +797,7 @@ fn build_window(
                 .body(std::borrow::Cow::Owned(content))
             {
                 *response = custom_response;
-                eprintln!("[Ruffle][DEBUG] servido localmente: {requested_filename}");
+                log(format!("[Ruffle][DEBUG] servido localmente: {requested_filename}"));
             }
         }
     });
