@@ -775,7 +775,9 @@ fn build_window(
 
         let candidate = base_dir.join(requested_filename);
         if !candidate.exists() {
-            log(format!("[Ruffle][DEBUG] não encontrado: {requested_filename} (uri: {uri})"));
+            log(format!(
+                "[Ruffle][DEBUG] não encontrado: {requested_filename} (uri: {uri})"
+            ));
             return;
         }
 
@@ -797,7 +799,9 @@ fn build_window(
                 .body(std::borrow::Cow::Owned(content))
             {
                 *response = custom_response;
-                log(format!("[Ruffle][DEBUG] servido localmente: {requested_filename}"));
+                log(format!(
+                    "[Ruffle][DEBUG] servido localmente: {requested_filename}"
+                ));
             }
         }
     });
