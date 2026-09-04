@@ -34,10 +34,12 @@ use tauri::TitleBarStyle;
 
 fn ruffle_debug_log(msg: &str) {
     use std::io::Write;
+    let dir = std::env::var("TEMP").unwrap_or_else(|_| "C:\\".to_string());
+    let path = format!("{dir}\\ruffle_debug.log");
     if let Ok(mut file) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open("C:\\ruffle_debug.log")
+        .open(path)
     {
         let _ = writeln!(file, "{msg}");
     }
