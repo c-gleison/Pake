@@ -453,15 +453,15 @@ fn build_window(
         let config_script = r#"
             window.RufflePlayer = window.RufflePlayer || {};
             window.RufflePlayer.config = {
-                "autoplay": "on",
-                "unmuteOverlay": "hidden",
-                "preferredRenderer": "webgl",
-                "quality": "high",
-                "wmode": "direct",
-                "smooth": true,
-                "letterbox": "off",
-                "contextMenu": "rightClickOnly",
-                "warnOnUnsupportedContent": false
+                autoplay: "on",
+                unmuteOverlay: "hidden",
+                preferredRenderer: "webgl",
+                quality: "high",
+                wmode: "direct",
+                smooth: true,
+                letterbox: "off",
+                contextMenu: "rightClickOnly",
+                warnOnUnsupportedContent: "false"
             };
         "#;
         let combined_script = format!("{}\n{}", config_script, ruffle_src);
