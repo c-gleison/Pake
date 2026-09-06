@@ -461,6 +461,8 @@ fn build_window(
         let config_script = format!(
             r#"
             (function() {{
+                console.log("[Ruffle-Local] script de inicialização rodou");
+                
                 var __localWasm = {wasm_map};
 
                 function __b64ToBytes(b64) {{
@@ -482,6 +484,7 @@ fn build_window(
                 var __originalFetch = window.fetch.bind(window);
                 window.fetch = function(input, init) {{
                     var url = typeof input === "string" ? input : (input && input.url) || "";
+                    console.log("[Ruffle-Local] fetch chamado para: " + url);
                     var match = __findLocalWasm(url);
                     if (match) {{
                         console.log("[Ruffle-Local] servindo .wasm embutido: " + match);
@@ -498,15 +501,15 @@ fn build_window(
 
                 window.DdtankPlayer = window.DdtankPlayer || {{}};
                 window.DdtankPlayer.config = {{
-                    autoplay: "on",
-                    unmuteOverlay: "hidden",
-                    preferredRenderer: "webgl",
                     quality: "high",
-                    wmode: "direct",
-                    smooth: true,
                     letterbox: "off",
-                    contextMenu: "rightClickOnly",
-                    warnOnUnsupportedContent: "false"
+                    menu: "on",	
+                    contextMenu: "on",
+                    preferredRenderer: "wgpu-webgl",
+                    wmode: "gpu",
+                    smooth: "true",
+                    frameRate: "30",
+                    playerRuntime: "flashplayer",
                 }};
             }})();
             "#,
