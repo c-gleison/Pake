@@ -32,19 +32,6 @@ use tauri::Theme;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
 
-fn ruffle_debug_log(msg: &str) {
-    use std::io::Write;
-    let dir = std::env::var("TEMP").unwrap_or_else(|_| "C:\\".to_string());
-    let path = format!("{dir}\\ruffle_debug.log");
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-    {
-        let _ = writeln!(file, "{msg}");
-    }
-}
-
 #[cfg(target_os = "macos")]
 fn prepare_macos_new_window_configuration(features: &NewWindowFeatures) -> tauri::Result<()> {
     let mtm = MainThreadMarker::new().ok_or_else(|| {
@@ -440,31 +427,93 @@ fn build_window(
         .resizable(window_config.resizable)
         .maximized(window_config.maximize);
 
-    let resource_dir = app.path().resource_dir().unwrap_or_default();
-    let prod_path = resource_dir.join("assets/ruffle/ruffle.js");
-    let dev_path = std::path::PathBuf::from("src-tauri/assets/ruffle/ruffle.js");
-    let ruffle_path = if prod_path.exists() {
-        prod_path
-    } else {
-        dev_path
-    };
+        {
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
 
-    if let Ok(ruffle_src) = std::fs::read_to_string(ruffle_path) {
-        let config_script = r#"
-            window.RufflePlayer = window.RufflePlayer || {};
-            window.RufflePlayer.config = {
-                autoplay: "on",
-                unmuteOverlay: "hidden",
-                preferredRenderer: "webgl",
-                quality: "high",
-                wmode: "direct",
-                smooth: true,
-                letterbox: "off",
-                contextMenu: "rightClickOnly",
-                warnOnUnsupportedContent: "false"
-            };
-        "#;
-        let combined_script = format!("{}\n{}", config_script, ruffle_src);
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+
+        let base_dir = exe_dir.join("ruffle");
+
+        // Lê o ddtank.js local (o script que define window.DdtankPlayer)
+        let ddtank_src = std::fs::read_to_string(base_dir.join("ddtank.js")).unwrap_or_default();
+
+        // Lê todos os .wasm da pasta e monta um mapa "nome_do_arquivo" -> base64
+        let mut wasm_entries: Vec<String> = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&base_dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.extension().map_or(false, |ext| ext == "wasm") {
+                    if let (Some(filename), Ok(bytes)) =
+                        (path.file_name().and_then(|f| f.to_str()), std::fs::read(&path))
+                    {
+                        let b64 = STANDARD.encode(&bytes);
+                        wasm_entries.push(format!("{:?}: {:?}", filename, b64));
+                    }
+                }
+            }
+        }
+
+        let wasm_map_js = format!("{{ {} }}", wasm_entries.join(", "));
+
+        let config_script = format!(
+            r#"
+            (function() {{
+                var __localWasm = {wasm_map};
+
+                function __b64ToBytes(b64) {{
+                    var binary = atob(b64);
+                    var bytes = new Uint8Array(binary.length);
+                    for (var i = 0; i < binary.length; i++) {{
+                        bytes[i] = binary.charCodeAt(i);
+                    }}
+                    return bytes;
+                }}
+
+                function __findLocalWasm(url) {{
+                    for (var name in __localWasm) {{
+                        if (url.indexOf(name) !== -1) return name;
+                    }}
+                    return null;
+                }}
+
+                var __originalFetch = window.fetch.bind(window);
+                window.fetch = function(input, init) {{
+                    var url = typeof input === "string" ? input : (input && input.url) || "";
+                    var match = __findLocalWasm(url);
+                    if (match) {{
+                        console.log("[Ruffle-Local] servindo .wasm embutido: " + match);
+                        var bytes = __b64ToBytes(__localWasm[match]);
+                        return Promise.resolve(
+                            new Response(bytes, {{
+                                status: 200,
+                                headers: {{ "Content-Type": "application/wasm" }}
+                            }})
+                        );
+                    }}
+                    return __originalFetch(input, init);
+                }};
+
+                window.DdtankPlayer = window.DdtankPlayer || {{}};
+                window.DdtankPlayer.config = {{
+                    autoplay: "on",
+                    unmuteOverlay: "hidden",
+                    preferredRenderer: "webgl",
+                    quality: "high",
+                    wmode: "direct",
+                    smooth: true,
+                    letterbox: "off",
+                    contextMenu: "rightClickOnly",
+                    warnOnUnsupportedContent: "false"
+                }};
+            }})();
+            "#,
+            wasm_map = wasm_map_js
+        );
+
+        let combined_script = format!("{}\n{}", config_script, ddtank_src);
         window_builder = window_builder.initialization_script(&combined_script);
     }
 
@@ -753,61 +802,6 @@ fn build_window(
     }
 
     window_builder = window_builder.on_navigation(|_| true);
-
-    /////////////////////////////////////
-    let app_handle = app.clone();
-    let window_label = label.to_string();
-
-        window_builder = window_builder.on_web_resource_request(move |request, response| {
-        let uri = request.uri().to_string();
-
-        let exe_dir = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-
-        let base_dir = exe_dir.join("ruffle");
-
-        if !(uri.contains("ruffle") || uri.contains(".wasm") || uri.contains("core.ruffle")) {
-            return;
-        }
-
-        let raw_filename = uri.split('/').last().unwrap_or("");
-        let requested_filename = raw_filename.split('?').next().unwrap_or(raw_filename);
-        if requested_filename.is_empty() {
-            return;
-        }
-
-        ruffle_debug_log(&format!("[Ruffle][DEBUG] pedido: {requested_filename} (uri completa: {uri})"));
-
-        let candidate = base_dir.join(requested_filename);
-        if !candidate.exists() {
-            ruffle_debug_log(&format!("[Ruffle][DEBUG] NÃO encontrado: {requested_filename}"));
-            return;
-        }
-
-        let content_type = if requested_filename.ends_with(".wasm") {
-            "application/wasm"
-        } else if requested_filename.ends_with(".js") {
-            "application/javascript"
-        } else {
-            "application/octet-stream"
-        };
-
-        if let Ok(content) = std::fs::read(&candidate) {
-            if let Ok(custom_response) = tauri::http::Response::builder()
-                .status(200)
-                .header("Content-Type", content_type)
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-                .header("Access-Control-Allow-Headers", "*")
-                .body(std::borrow::Cow::Owned(content))
-            {
-                *response = custom_response;
-                ruffle_debug_log(&format!("[Ruffle][DEBUG] servido localmente: {requested_filename}"));
-            }
-        }
-    });
 
     let window = window_builder.build()?;
 
