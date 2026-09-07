@@ -427,7 +427,7 @@ fn build_window(
         .resizable(window_config.resizable)
         .maximized(window_config.maximize);
 
-    let config_script = r#"
+    let ddtank_config_script = r#"
         (function() {
             window.DdtankPlayer = window.DdtankPlayer || {};
             window.DdtankPlayer.config = {
@@ -444,7 +444,7 @@ fn build_window(
         })();
     "#;
     
-    window_builder = window_builder.initialization_script(config_script);
+    window_builder = window_builder.initialization_script(ddtank_config_script);
 
     #[cfg(target_os = "windows")]
     {
