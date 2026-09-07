@@ -427,98 +427,24 @@ fn build_window(
         .resizable(window_config.resizable)
         .maximized(window_config.maximize);
 
-        {
-        use base64::{engine::general_purpose::STANDARD, Engine as _};
-
-        let exe_dir = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-
-        let base_dir = exe_dir.join("ruffle");
-
-        // Lê o ddtank.js local (o script que define window.DdtankPlayer)
-        let ddtank_src = std::fs::read_to_string(base_dir.join("ddtank.js")).unwrap_or_default();
-
-        // Lê todos os .wasm da pasta e monta um mapa "nome_do_arquivo" -> base64
-        let mut wasm_entries: Vec<String> = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(&base_dir) {
-            for entry in entries.filter_map(|e| e.ok()) {
-                let path = entry.path();
-                if path.extension().map_or(false, |ext| ext == "wasm") {
-                    if let (Some(filename), Ok(bytes)) =
-                        (path.file_name().and_then(|f| f.to_str()), std::fs::read(&path))
-                    {
-                        let b64 = STANDARD.encode(&bytes);
-                        wasm_entries.push(format!("{:?}: {:?}", filename, b64));
-                    }
-                }
-            }
-        }
-
-        let wasm_map_js = format!("{{ {} }}", wasm_entries.join(", "));
-
-        let config_script = format!(
-            r#"
-            (function() {{
-                console.log("[Ruffle-Local] script de inicialização rodou");
-                
-                var __localWasm = {wasm_map};
-
-                function __b64ToBytes(b64) {{
-                    var binary = atob(b64);
-                    var bytes = new Uint8Array(binary.length);
-                    for (var i = 0; i < binary.length; i++) {{
-                        bytes[i] = binary.charCodeAt(i);
-                    }}
-                    return bytes;
-                }}
-
-                function __findLocalWasm(url) {{
-                    for (var name in __localWasm) {{
-                        if (url.indexOf(name) !== -1) return name;
-                    }}
-                    return null;
-                }}
-
-                var __originalFetch = window.fetch.bind(window);
-                window.fetch = function(input, init) {{
-                    var url = typeof input === "string" ? input : (input && input.url) || "";
-                    console.log("[Ruffle-Local] fetch chamado para: " + url);
-                    var match = __findLocalWasm(url);
-                    if (match) {{
-                        console.log("[Ruffle-Local] servindo .wasm embutido: " + match);
-                        var bytes = __b64ToBytes(__localWasm[match]);
-                        return Promise.resolve(
-                            new Response(bytes, {{
-                                status: 200,
-                                headers: {{ "Content-Type": "application/wasm" }}
-                            }})
-                        );
-                    }}
-                    return __originalFetch(input, init);
-                }};
-
-                window.DdtankPlayer = window.DdtankPlayer || {{}};
-                window.DdtankPlayer.config = {{
-                    quality: "high",
-                    letterbox: "off",
-                    menu: "on",	
-                    contextMenu: "on",
-                    preferredRenderer: "wgpu-webgl",
-                    wmode: "gpu",
-                    smooth: "true",
-                    frameRate: "30",
-                    playerRuntime: "flashplayer",
-                }};
-            }})();
-            "#,
-            wasm_map = wasm_map_js
-        );
-
-        let combined_script = format!("{}\n{}", config_script, ddtank_src);
-        window_builder = window_builder.initialization_script(&combined_script);
-    }
+    let config_script = r#"
+        (function() {
+            window.DdtankPlayer = window.DdtankPlayer || {};
+            window.DdtankPlayer.config = {
+                quality: "high",
+                letterbox: "off",
+                menu: "on",
+                contextMenu: "on",
+                preferredRenderer: "wgpu-webgl",
+                wmode: "gpu",
+                smooth: "true",
+                frameRate: "30",
+                playerRuntime: "flashplayer",
+            };
+        })();
+    "#;
+    
+    window_builder = window_builder.initialization_script(config_script);
 
     #[cfg(target_os = "windows")]
     {
